@@ -1,0 +1,100 @@
+---
+title: "乳腺癌诊断分析报告"
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+params:
+  dataset: NA
+  diagnosis_stats: NA
+  diagnosis_plot: NA
+  config: NA
+  cor_matrix: NA          # 新增参数
+  selected_features: NA   # 新增参数
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+options(scipen = 999)
+```
+
+# 分析报告
+
+## 诊断结果分布
+
+### 统计摘要
+```{r diagnosis-stats}
+knitr::kable(
+  params$diagnosis_stats,
+  caption = "诊断类别分布统计",
+  col.names = c("诊断结果", "病例数", "百分比 (%)"),
+  align = c("l", "r", "r")
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+### 可视化展示
+```{r diagnosis-plot}
+params$diagnosis_plot + 
+  theme(plot.margin = unit(c(1,1,2,1), "cm"))
+```
+
+## 生物标志物分析
+
+### 半径均值分布
+```{r radius-mean}
+ggplot(params$dataset, aes(x = radius_mean, fill = Diagnosis)) +
+  geom_density(alpha = 0.6, adjust = 1.2) +
+  scale_fill_manual(values = params$config$color_palette) +
+  labs(
+    title = "肿瘤半径均值分布对比",
+    x = "半径均值 (标准化单位)",
+    y = "密度"
+  ) +
+  theme_bw(base_size = 14)
+```
+
+### 特征相关性
+```{r correlation}
+cor_matrix <- params$dataset %>%
+  select(radius_mean:concave_points_worst) %>%
+  cor()
+
+corrplot::corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  number.cex = 0.7,
+  addCoef.col = "black"
+)
+```
+## 特征相关性分析
+
+### 关键特征筛选结果
+```{r selected-features}
+cat("与诊断结果显著相关的特征 (r ≥", params$config$correlation$threshold, "):\n")
+cat(paste("-", params$selected_features, collapse = "\n"))
+```
+
+### 相关矩阵可视化
+```{r correlation-matrix}
+corrplot::corrplot(
+  params$cor_matrix,
+  method = params$config$correlation$method,
+  type = "upper",
+  tl.col = "black",
+  tl.cex = params$config$correlation$text_size,
+  number.cex = params$config$correlation$number_size
+)
+```
